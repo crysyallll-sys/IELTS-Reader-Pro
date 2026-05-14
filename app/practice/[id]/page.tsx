@@ -76,8 +76,12 @@ export default function PracticePage({ params }: { params: { id: string } }) {
                           className="w-4 h-4"
                         />
                         <span className="text-gray-700">
-                        {isYesNo ? value : `${key}. ${value}`}
-                        </span>
+  {isYesNo ? (
+    <>{value}</>
+  ) : (
+    <>{key}. {value}</>
+  )}
+</span>
                       </label>
                     ))}
                   </div>
