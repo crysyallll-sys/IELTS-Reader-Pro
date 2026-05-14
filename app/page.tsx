@@ -39,7 +39,7 @@ export default function PracticePage({ params }: { params: { id: string } }) {
       <div className="max-w-7xl mx-auto px-4 py-6">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* 左侧：文章 */}
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="bg-white rounded-lg shadow p-6 h-[calc(100vh-160px)] overflow-y-auto">
             <h2 className="text-2xl font-bold mb-4">{articleData.title}</h2>
             {Object.entries(articleData.paragraphs).map(([para, content]) => (
               <div key={para} className="mb-4">
@@ -50,7 +50,7 @@ export default function PracticePage({ params }: { params: { id: string } }) {
           </div>
 
           {/* 右侧：题目 */}
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="bg-white rounded-lg shadow p-6 h-[calc(100vh-160px)] overflow-y-auto">
             <h2 className="text-xl font-bold mb-4">题目</h2>
             {questionIds.map((qId, idx) => {
               const q = articleData.questions[Number(qId)];

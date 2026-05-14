@@ -85,7 +85,7 @@ export default function ResultPage() {
         <div className="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
           <h1 className="text-xl font-bold text-blue-600">IELTS-Reader-Pro</h1>
           <button
-            onClick={() => router.push('/practice/1')}
+            onClick={() => router.push('/')}
             className="text-blue-600 hover:underline text-sm"
           >
             再做一次
@@ -221,7 +221,7 @@ export default function ResultPage() {
         {/* 继续按钮 */}
         <div className="mt-8 text-center">
           <button
-            onClick={() => router.push('/practice/1')}
+            onClick={() => router.push('/')}
             className="bg-blue-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-blue-700"
           >
             继续练习
