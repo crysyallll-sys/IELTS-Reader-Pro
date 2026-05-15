@@ -74,7 +74,7 @@ function getSkillGains(questionType: string): string[] {
     case 'tfng':
       return ['logic', 'notgiven'];
     case 'fillblank':
-      return ['paraphrase', 'keyword'];
+      return ['keyword', 'scan'];
     case 'multiplechoice':
       return ['paraphrase', 'logic'];
     case 'matching':
@@ -135,16 +135,20 @@ export default function ResultPage() {
   const router = useRouter();
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [processed, setProcessed] = useState(false);
 
   useEffect(() => {
-  const saved = localStorage.getItem('practiceAnswers');
-  if (saved) {
-    const parsedAnswers = JSON.parse(saved);
-    setAnswers(parsedAnswers);
-   
-    applySkillExperience(parsedAnswers, articleData.id);
-  }
-}, []);
+    const saved = localStorage.getItem('practiceAnswers');
+    if (saved) {
+      const parsedAnswers = JSON.parse(saved);
+      setAnswers(parsedAnswers);
+
+      if (!processed) {
+        applySkillExperience(parsedAnswers, articleData.id);
+        setProcessed(true);
+      }
+    }
+  }, [processed]);
 
   const calculateScore = () => {
     let correct = 0;
