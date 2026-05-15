@@ -1,12 +1,12 @@
-'use client';
+'use client'; // 必须在第一行
 
-export const dynamic = 'force-dynamic';
+export const dynamic = 'force-dynamic'; // 强制动态渲染
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react'; // 1. 引入 Suspense
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
-// 同义替换题库（可以从 questions.ts 扩展）
+// 同义替换题库保持不变
 const synonymPairs = [
   { left: "consolidate", right: "strengthen" },
   { left: "not necessarily", right: "not always" },
@@ -20,7 +20,8 @@ const synonymPairs = [
   { left: "induce", right: "cause" },
 ];
 
-export default function MicroTrainingPage() {
+// 2. 将原本的所有逻辑移入这个内部组件
+function MicroTrainingContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const skillId = searchParams.get('skill') || 'paraphrase';
@@ -31,7 +32,7 @@ export default function MicroTrainingPage() {
   const [message, setMessage] = useState('');
   const [completed, setCompleted] = useState(false);
 
-  // 初始化游戏：打乱卡片
+  // 初始化游戏逻辑
   useEffect(() => {
     const leftCards = synonymPairs.map((pair, idx) => ({
       id: `L${idx}`,
@@ -203,5 +204,14 @@ export default function MicroTrainingPage() {
         )}
       </div>
     </div>
+  );
+}
+
+// 3. 最终导出的主页面组件
+export default function MicroTrainingPage() {
+  return (
+    <Suspense fallback={<div className="p-10 text-center">正在加载训练营...</div>}>
+      <MicroTrainingContent />
+    </Suspense>
   );
 }
