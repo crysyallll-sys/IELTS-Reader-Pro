@@ -75,9 +75,9 @@ export default function PracticePage({ params }: { params: { id: string } }) {
                           checked={answers[qId] === key}
                           className="w-4 h-4"
                         />
-                        <span className="text-gray-700">
-                          {isYesNo ? value : `${key}. ${value}`}
-                        </span>
+                       <span className="text-gray-700">
+  {isYesNo ? (value as string) : (key as string) + '. ' + (value as string)}
+</span>
                       </label>
                     ))}
                   </div>

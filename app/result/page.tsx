@@ -42,7 +42,7 @@ export default function ResultPage() {
       
       if (isCorrect) correct++;
     }
-    return { correct, total: Object.keys(answers).length };
+    return { correct, total: Object.keys(articleData.questions).length };
   };
 
   const { correct, total } = calculateScore();
