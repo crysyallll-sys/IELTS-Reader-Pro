@@ -1,7 +1,9 @@
-// @ts-nocheck
 export const dynamic = 'force-dynamic';
-// app/micro-training/page.tsx
 'use client';
+
+// @ts-nocheck
+// app/micro-training/page.tsx
+
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
@@ -33,7 +35,6 @@ export default function MicroTrainingPage() {
 
   // 初始化游戏：打乱卡片
   useEffect(() => {
-    // 创建左侧和右侧卡片
     const leftCards = synonymPairs.map((pair, idx) => ({
       id: `L${idx}`,
       text: pair.left,
@@ -47,7 +48,6 @@ export default function MicroTrainingPage() {
       pairId: idx,
     }));
     
-    // 打乱顺序
     const shuffled = [...leftCards, ...rightCards].sort(() => Math.random() - 0.5);
     setCards(shuffled);
   }, []);
@@ -56,7 +56,6 @@ export default function MicroTrainingPage() {
     if (completed) return;
     if (matchedPairs.includes(card.pairId)) return;
 
-    // 未选中任何卡片
     if (selectedLeft === null) {
       if (card.type === 'left') {
         setSelectedLeft(card);
@@ -67,39 +66,32 @@ export default function MicroTrainingPage() {
       return;
     }
 
-    // 已选中左侧卡片，点击右侧卡片进行配对
     if (card.type === 'right') {
       if (selectedLeft.pairId === card.pairId) {
-        // 配对成功
         setMatchedPairs([...matchedPairs, card.pairId]);
         setSelectedLeft(null);
         setMessage('✅ 配对成功！');
         setTimeout(() => setMessage(''), 800);
       } else {
-        // 配对失败
         setMessage(`❌ 配对失败：“${selectedLeft.text}” 不等于 “${card.text}”`);
         setSelectedLeft(null);
         setTimeout(() => setMessage(''), 1500);
       }
     } else {
-      // 点击了左侧卡片，切换选中
       setSelectedLeft(card);
     }
   };
 
-  // 检查是否完成
   useEffect(() => {
     if (matchedPairs.length === synonymPairs.length && synonymPairs.length > 0) {
       setCompleted(true);
       
-      // 给技能加经验
       const saved = localStorage.getItem('skillTreeData');
       if (saved) {
         let data = JSON.parse(saved);
         const skillIndex = data.findIndex(s => s.id === skillId);
         if (skillIndex !== -1) {
           data[skillIndex].exp += 15;
-          // 检查升级
           if (data[skillIndex].exp >= 100) {
             data[skillIndex].level += Math.floor(data[skillIndex].exp / 100);
             data[skillIndex].exp = data[skillIndex].exp % 100;
@@ -123,7 +115,6 @@ export default function MicroTrainingPage() {
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-4xl mx-auto">
-        {/* 头部导航 */}
         <div className="bg-white rounded-lg shadow p-4 mb-6 flex justify-between items-center">
           <Link href="/skill-tree" className="text-blue-600 hover:underline">
             ← 返回能力地图
@@ -132,19 +123,16 @@ export default function MicroTrainingPage() {
           <div className="w-20" />
         </div>
 
-        {/* 游戏说明 */}
         <div className="bg-blue-50 rounded-lg p-4 mb-6 text-center text-gray-700">
           🎮 点击左侧单词，再点击右侧匹配的同义替换词
         </div>
 
-        {/* 消息提示 */}
         {message && (
           <div className="fixed top-20 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white px-6 py-3 rounded-lg shadow-lg z-50">
             {message}
           </div>
         )}
 
-        {/* 游戏进度 */}
         <div className="bg-white rounded-lg shadow p-4 mb-6">
           <div className="flex justify-between items-center">
             <span>进度</span>
@@ -160,9 +148,7 @@ export default function MicroTrainingPage() {
           </div>
         </div>
 
-        {/* 游戏卡片区域 */}
         <div className="grid grid-cols-2 gap-6">
-          {/* 左侧列：原始词 */}
           <div className="bg-white rounded-lg shadow p-4">
             <h2 className="text-lg font-bold mb-4 text-center text-blue-600">📖 原文单词</h2>
             <div className="space-y-3">
@@ -181,7 +167,6 @@ export default function MicroTrainingPage() {
             </div>
           </div>
 
-          {/* 右侧列：同义替换词 */}
           <div className="bg-white rounded-lg shadow p-4">
             <h2 className="text-lg font-bold mb-4 text-center text-green-600">🔄 同义替换</h2>
             <div className="space-y-3">
@@ -201,7 +186,6 @@ export default function MicroTrainingPage() {
           </div>
         </div>
 
-        {/* 完成弹窗 */}
         {completed && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white rounded-lg p-8 text-center max-w-md">
