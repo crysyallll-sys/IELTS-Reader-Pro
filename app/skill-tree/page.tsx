@@ -109,7 +109,7 @@ export default function SkillTreePage() {
   const [skills, setSkills] = useState<Skill[]>([]);
 
   useEffect(() => {
-    const stored = localStorage.getItem("skillTree");
+    const stored = localStorage.getItem("skillTreeData");
     if (stored) {
       const parsed = JSON.parse(stored) as Skill[];
       setSkills(updateUnlocks(parsed));
@@ -120,7 +120,7 @@ export default function SkillTreePage() {
 
   useEffect(() => {
     if (skills.length > 0) {
-      localStorage.setItem("skillTree", JSON.stringify(skills));
+      localStorage.setItem("skillTreeData", JSON.stringify(skills));
     }
   }, [skills]);
 

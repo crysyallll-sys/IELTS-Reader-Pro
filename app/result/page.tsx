@@ -5,6 +5,132 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { articleData } from '@/data/questions';
 
+interface Skill {
+  id: string;
+  name: string;
+  description: string;
+  level: number;
+  exp: number;
+  expToNext: number;
+  unlocked: boolean;
+}
+
+const EXP_PER_LEVEL = 100;
+
+function buildInitialSkills(): Skill[] {
+  return [
+    { id: "keyword", name: "关键词定位", description: "快速定位题目关键词在原文中的位置", level: 1, exp: 0, expToNext: EXP_PER_LEVEL, unlocked: true },
+    { id: "scan", name: "段落扫读", description: "快速扫读段落获取核心信息", level: 1, exp: 0, expToNext: EXP_PER_LEVEL, unlocked: true },
+    { id: "paraphrase", name: "同义替换识别", description: "识别题目与原文的同义改写", level: 1, exp: 0, expToNext: EXP_PER_LEVEL, unlocked: true },
+    { id: "sentence", name: "长难句解析", description: "分析复杂句子结构", level: 1, exp: 0, expToNext: EXP_PER_LEVEL, unlocked: false },
+    { id: "logic", name: "逻辑陷阱判断", description: "识别论证中的逻辑漏洞", level: 1, exp: 0, expToNext: EXP_PER_LEVEL, unlocked: false },
+    { id: "notgiven", name: "NOT GIVEN判断", description: "判断信息是否原文未提及", level: 1, exp: 0, expToNext: EXP_PER_LEVEL, unlocked: false },
+    { id: "time", name: "时间管理", description: "合理分配答题时间", level: 1, exp: 0, expToNext: EXP_PER_LEVEL, unlocked: true },
+  ];
+}
+
+function updateUnlocks(skills: Skill[]): Skill[] {
+  const paraphraseLV2 = (skills.find(s => s.id === "paraphrase")?.level ?? 0) >= 2;
+  const logicLV2 = (skills.find(s => s.id === "logic")?.level ?? 0) >= 2;
+
+  return skills.map(s => {
+    if (s.id === "sentence") return { ...s, unlocked: paraphraseLV2 };
+    if (s.id === "logic") return { ...s, unlocked: paraphraseLV2 };
+    if (s.id === "notgiven") return { ...s, unlocked: logicLV2 };
+    return s;
+  });
+}
+
+function addExp(skills: Skill[], skillId: string, amount: number): Skill[] {
+  const updated = skills.map(s => {
+    if (s.id !== skillId) return s;
+    const newExp = s.exp + amount;
+    const totalForLevel = s.level * EXP_PER_LEVEL;
+    if (newExp >= totalForLevel && s.level < 5) {
+      const remainder = newExp - totalForLevel;
+      return { ...s, level: s.level + 1, exp: remainder, expToNext: EXP_PER_LEVEL };
+    }
+    return { ...s, exp: Math.min(newExp, totalForLevel - 1) };
+  });
+  return updateUnlocks(updated);
+}
+
+function detectQuestionType(q: any): string {
+  if (q.options) {
+    const optionValues = Object.values(q.options);
+    if (optionValues.some((v: any) => ['YES', 'NO', 'NOT GIVEN'].includes(v))) {
+      return 'tfng';
+    }
+    if (Array.isArray(q.options) || (optionValues.length > 0 && typeof optionValues[0] === 'string' && optionValues[0].length > 20)) {
+      return 'matching';
+    }
+    return 'multiplechoice';
+  }
+  return 'other';
+}
+
+function getSkillGains(questionType: string): string[] {
+  switch (questionType) {
+    case 'tfng':
+      return ['logic', 'notgiven'];
+    case 'fillblank':
+      return ['paraphrase', 'keyword'];
+    case 'multiplechoice':
+      return ['paraphrase', 'logic'];
+    case 'matching':
+      return ['scan', 'paraphrase'];
+    default:
+      return ['paraphrase'];
+  }
+}
+
+function applySkillExperience(answers: Record<string, string>, processedKey: string): Skill[] {
+  const skills = buildInitialSkills();
+  const stored = localStorage.getItem('skillTreeData');
+  if (stored) {
+    const parsed = JSON.parse(stored) as Skill[];
+    const existing = updateUnlocks(parsed);
+    existing.forEach((s, i) => { skills[i] = s; });
+  }
+
+  const processedKeyName = `processed_${processedKey}`;
+  if (localStorage.getItem(processedKeyName)) {
+    return skills;
+  }
+  localStorage.setItem(processedKeyName, 'true');
+
+  for (const [qId, userRawAnswer] of Object.entries(answers)) {
+    const q = articleData.questions[Number(qId)];
+    if (!q) continue;
+
+    const isYesNoQuestion = q.options &&
+      Object.values(q.options).some((v: any) => ['YES', 'NO', 'NOT GIVEN'].includes(v));
+
+    let isCorrect = false;
+    if (isYesNoQuestion) {
+      const optionMap: Record<string, string> = { 'A': 'YES', 'B': 'NO', 'C': 'NOT GIVEN' };
+      const mappedAnswer = optionMap[userRawAnswer];
+      isCorrect = mappedAnswer === q.answer;
+    } else {
+      isCorrect = userRawAnswer === q.answer;
+    }
+
+    if (!isCorrect) continue;
+
+    const qType = detectQuestionType(q);
+    const skillGains = getSkillGains(qType);
+    skillGains.forEach(skillId => {
+      const target = skills.find(s => s.id === skillId);
+      if (target?.unlocked) {
+        Object.assign(target, addExp([target], skillId, 3)[0]);
+      }
+    });
+  }
+
+  localStorage.setItem('skillTreeData', JSON.stringify(skills));
+  return skills;
+}
+
 export default function ResultPage() {
   const router = useRouter();
   const [answers, setAnswers] = useState<Record<string, string>>({});
@@ -15,6 +141,7 @@ export default function ResultPage() {
     if (saved) {
       setAnswers(JSON.parse(saved));
     }
+    applySkillExperience({}, articleData.id);
   }, []);
 
   const calculateScore = () => {
