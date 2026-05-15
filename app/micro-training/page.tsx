@@ -1,7 +1,7 @@
 // @ts-nocheck
+export const dynamic = 'force-dynamic';
 // app/micro-training/page.tsx
 'use client';
-export const dynamic = 'force-dynamic';
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
