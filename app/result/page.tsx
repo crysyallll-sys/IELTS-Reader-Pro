@@ -137,12 +137,14 @@ export default function ResultPage() {
   const [expandedId, setExpandedId] = useState<number | null>(null);
 
   useEffect(() => {
-    const saved = localStorage.getItem('practiceAnswers');
-    if (saved) {
-      setAnswers(JSON.parse(saved));
-    }
-    applySkillExperience({}, articleData.id);
-  }, []);
+  const saved = localStorage.getItem('practiceAnswers');
+  if (saved) {
+    const parsedAnswers = JSON.parse(saved);
+    setAnswers(parsedAnswers);
+   
+    applySkillExperience(parsedAnswers, articleData.id);
+  }
+}, []);
 
   const calculateScore = () => {
     let correct = 0;
