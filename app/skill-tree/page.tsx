@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-
+import Link from 'next/link';
 interface Skill {
   id: string;
   name: string;
@@ -79,6 +79,7 @@ function addExp(skills: Skill[], skillId: string, amount: number): Skill[] {
   return updateUnlocks(updated);
 }
 
+
 function SkillCard({ skill }: { skill: Skill }) {
   const progress = (skill.exp / skill.expToNext) * 100;
 
@@ -100,6 +101,15 @@ function SkillCard({ skill }: { skill: Skill }) {
       <p className="text-xs text-gray-400 mt-1 text-right">{skill.exp}/{skill.expToNext} EXP</p>
       {!skill.unlocked && (
         <p className="text-xs text-orange-500 mt-2">🔒 需先解锁前置技能</p>
+      )}
+      {/* 添加开始训练按钮 */}
+      {skill.unlocked && (
+        <Link
+          href={`/micro-training?skill=${skill.id}`}
+          className="mt-3 block text-center bg-blue-500 hover:bg-blue-600 text-white py-2 rounded-lg text-sm transition-colors"
+        >
+          🎮 开始训练
+        </Link>
       )}
     </div>
   );
