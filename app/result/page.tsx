@@ -93,7 +93,7 @@ export default function ResultPage() {
 
   const questionIds = Object.keys(articleData.questions).sort((a, b) => Number(a) - Number(b));
 
-  // 渲染解题思路（把 \n 转成 <br />）
+  // 渲染解题思路
   const renderSolution = (solution: string) => {
     if (!solution) return null;
     return solution.split('\n').map((line, idx) => (
@@ -268,3 +268,20 @@ export default function ResultPage() {
                   );
                 })}
               </div>
+            </div>
+          </div>
+        </div>
+
+        {/* 继续按钮 */}
+        <div className="mt-8 text-center">
+          <button
+            onClick={() => router.push('/')}
+            className="bg-blue-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-blue-700"
+          >
+            继续练习
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
