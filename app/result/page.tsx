@@ -1,154 +1,38 @@
-// @ts-nocheck// app/result/page.tsx
+// @ts-nocheck
 'use client';
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { articleData } from '@/data/questions';
 
-interface Skill {
-  id: string;
-  name: string;
-  description: string;
-  level: number;
-  exp: number;
-  expToNext: number;
-  unlocked: boolean;
-}
-
-const EXP_PER_LEVEL = 100;
-
-function buildInitialSkills(): Skill[] {
-  return [
-    { id: "keyword", name: "关键词定位", description: "快速定位题目关键词在原文中的位置", level: 1, exp: 0, expToNext: EXP_PER_LEVEL, unlocked: true },
-    { id: "scan", name: "段落扫读", description: "快速扫读段落获取核心信息", level: 1, exp: 0, expToNext: EXP_PER_LEVEL, unlocked: true },
-    { id: "paraphrase", name: "同义替换识别", description: "识别题目与原文的同义改写", level: 1, exp: 0, expToNext: EXP_PER_LEVEL, unlocked: true },
-    { id: "sentence", name: "长难句解析", description: "分析复杂句子结构", level: 1, exp: 0, expToNext: EXP_PER_LEVEL, unlocked: false },
-    { id: "logic", name: "逻辑陷阱判断", description: "识别论证中的逻辑漏洞", level: 1, exp: 0, expToNext: EXP_PER_LEVEL, unlocked: false },
-    { id: "notgiven", name: "NOT GIVEN判断", description: "判断信息是否原文未提及", level: 1, exp: 0, expToNext: EXP_PER_LEVEL, unlocked: false },
-    { id: "time", name: "时间管理", description: "合理分配答题时间", level: 1, exp: 0, expToNext: EXP_PER_LEVEL, unlocked: true },
-  ];
-}
-
-function updateUnlocks(skills: Skill[]): Skill[] {
-  const paraphraseLV2 = (skills.find(s => s.id === "paraphrase")?.level ?? 0) >= 2;
-  const logicLV2 = (skills.find(s => s.id === "logic")?.level ?? 0) >= 2;
-
-  return skills.map(s => {
-    if (s.id === "sentence") return { ...s, unlocked: paraphraseLV2 };
-    if (s.id === "logic") return { ...s, unlocked: paraphraseLV2 };
-    if (s.id === "notgiven") return { ...s, unlocked: logicLV2 };
-    return s;
-  });
-}
-
-function addExp(skills: Skill[], skillId: string, amount: number): Skill[] {
-  const updated = skills.map(s => {
-    if (s.id !== skillId) return s;
-    const newExp = s.exp + amount;
-    const totalForLevel = s.level * EXP_PER_LEVEL;
-    if (newExp >= totalForLevel && s.level < 5) {
-      const remainder = newExp - totalForLevel;
-      return { ...s, level: s.level + 1, exp: remainder, expToNext: EXP_PER_LEVEL };
-    }
-    return { ...s, exp: Math.min(newExp, totalForLevel - 1) };
-  });
-  return updateUnlocks(updated);
-}
-
-function detectQuestionType(q: any): string {
-  if (q.options) {
-    const optionValues = Object.values(q.options);
-    if (optionValues.some((v: any) => ['YES', 'NO', 'NOT GIVEN'].includes(v))) {
-      return 'tfng';
-    }
-    if (Array.isArray(q.options) || (optionValues.length > 0 && typeof optionValues[0] === 'string' && optionValues[0].length > 20)) {
-      return 'matching';
-    }
-    return 'multiplechoice';
-  }
-  return 'other';
-}
-
-function getSkillGains(questionType: string): string[] {
-  switch (questionType) {
-    case 'tfng':
-      return ['logic', 'notgiven'];
-    case 'fillblank':
-      return ['keyword', 'scan'];
-    case 'multiplechoice':
-      return ['paraphrase', 'logic'];
-    case 'matching':
-      return ['scan', 'paraphrase'];
-    default:
-      return ['paraphrase'];
-  }
-}
-
-function applySkillExperience(answers: Record<string, string>, processedKey: string): Skill[] {
-  const skills = buildInitialSkills();
-  const stored = localStorage.getItem('skillTreeData');
-  if (stored) {
-    const parsed = JSON.parse(stored) as Skill[];
-    const existing = updateUnlocks(parsed);
-    existing.forEach((s, i) => { skills[i] = s; });
-  }
-
-  const processedKeyName = `processed_${processedKey}`;
-  if (localStorage.getItem(processedKeyName)) {
-    return skills;
-  }
-  localStorage.setItem(processedKeyName, 'true');
-
-  for (const [qId, userRawAnswer] of Object.entries(answers)) {
-    const q = articleData.questions[Number(qId)];
-    if (!q) continue;
-
-    const isYesNoQuestion = q.options &&
-      Object.values(q.options).some((v: any) => ['YES', 'NO', 'NOT GIVEN'].includes(v));
-
-    let isCorrect = false;
-    if (isYesNoQuestion) {
-      const optionMap: Record<string, string> = { 'A': 'YES', 'B': 'NO', 'C': 'NOT GIVEN' };
-      const mappedAnswer = optionMap[userRawAnswer];
-      isCorrect = mappedAnswer === q.answer;
-    } else {
-      isCorrect = userRawAnswer === q.answer;
-    }
-
-    if (!isCorrect) continue;
-
-    const qType = detectQuestionType(q);
-    const skillGains = getSkillGains(qType);
-    skillGains.forEach(skillId => {
-      const target = skills.find(s => s.id === skillId);
-      if (target?.unlocked) {
-        Object.assign(target, addExp([target], skillId, 3)[0]);
-      }
-    });
-  }
-
-  localStorage.setItem('skillTreeData', JSON.stringify(skills));
-  return skills;
-}
+// 错因类型映射表
+const errorTypeMap: Record<string, string> = {
+  'LOC-01': '找不到正确答案段落',
+  'LOC-02': '找错段落',
+  'SYN-01': '不识别同义替换',
+  'SYN-02': '答案词形式错误',
+  'LOG-01': 'NG与FALSE混淆',
+  'LOG-02': '过度联想/主观判断',
+  'LOG-03': '受干扰项误导',
+  'LOG-04': '找不准考点词',
+  'LON-01': '长难句结构复杂看不懂',
+  'LON-02': '定位句理解偏差',
+  'STR-01': '时间不够/做不完',
+  'STR-02': '被难题卡住影响后续',
+  'STR-03': '做题顺序/策略差',
+};
 
 export default function ResultPage() {
   const router = useRouter();
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [expandedId, setExpandedId] = useState<number | null>(null);
-  const [processed, setProcessed] = useState(false);
 
   useEffect(() => {
     const saved = localStorage.getItem('practiceAnswers');
     if (saved) {
-      const parsedAnswers = JSON.parse(saved);
-      setAnswers(parsedAnswers);
-
-      if (!processed) {
-        applySkillExperience(parsedAnswers, articleData.id);
-        setProcessed(true);
-      }
+      setAnswers(JSON.parse(saved));
     }
-  }, [processed]);
+  }, []);
 
   const calculateScore = () => {
     let correct = 0;
@@ -202,14 +86,22 @@ export default function ResultPage() {
       isCorrect = userAnswer === q?.answer;
     }
     
-    // 处理未作答的情况
     const isUnanswered = !userAnswer;
     
     return { q, userAnswer, isCorrect, isUnanswered };
   };
 
-  // 获取所有题目ID
   const questionIds = Object.keys(articleData.questions).sort((a, b) => Number(a) - Number(b));
+
+  // 渲染解题思路（把 \n 转成 <br />）
+  const renderSolution = (solution: string) => {
+    if (!solution) return null;
+    return solution.split('\n').map((line, idx) => (
+      <div key={idx} className="text-sm text-gray-700 mb-1">
+        {line}
+      </div>
+    ));
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -226,7 +118,6 @@ export default function ResultPage() {
         </div>
       </div>
 
-      {/* 左右分栏布局 */}
       <div className="max-w-7xl mx-auto px-4 py-6">
         {/* 成绩卡片 */}
         <div className="bg-white rounded-lg shadow p-4 mb-6 text-center">
@@ -234,133 +125,146 @@ export default function ResultPage() {
           <div className="text-gray-600">正确 {correct} / 总题数 {total}</div>
         </div>
 
-        
-
-       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6" style={{ height: 'calc(100vh - 140px)' }}>
-  {/* 左侧：文章 */}
-  <div className="bg-white rounded-lg shadow flex flex-col overflow-hidden">
-    {/* 固定标题 */}
-    <div className="sticky top-0 bg-white border-b px-6 py-3 z-10">
-      <h2 className="text-xl font-bold text-blue-600">📖 原文</h2>
-    </div>
-    {/* 滚动内容 */}
-    <div className="flex-1 overflow-y-auto p-6">
-      {Object.entries(articleData.paragraphs).map(([para, content]) => (
-        <div key={para} className="mb-4">
-          <h3 className="font-bold text-blue-600 mb-1">段落 {para}</h3>
-          <p className="text-gray-700 leading-relaxed text-sm">{content}</p>
-        </div>
-      ))}
-    </div>
-  </div>
-
-  {/* 右侧：题目与解析 */}
-  <div className="bg-white rounded-lg shadow flex flex-col overflow-hidden">
-    {/* 固定标题 */}
-    <div className="sticky top-0 bg-white border-b px-6 py-3 z-10">
-      <h2 className="text-xl font-bold text-blue-600">📝 题目与解析</h2>
-    </div>
-    {/* 滚动内容 */}
-    <div className="flex-1 overflow-y-auto p-6">
-      <div className="space-y-4">
-        {questionIds.map((qId, idx) => {
-          const { q, userAnswer, isCorrect, isUnanswered } = getQuestionData(qId);
-          if (!q) return null;
-          const isExpanded = expandedId === Number(qId);
-
-          return (
-            <div key={qId} className="border rounded-lg overflow-hidden">
-              {/* 题目卡片 */}
-              <div
-                className={`p-3 cursor-pointer ${
-                  isUnanswered ? 'bg-gray-100' : isCorrect ? 'bg-green-50' : 'bg-red-50'
-                }`}
-                onClick={() => setExpandedId(isExpanded ? null : Number(qId))}
-              >
-                <div className="flex justify-between items-start">
-                  <div className="flex-1">
-                    <div className="font-medium text-sm">
-                      {idx + 1}. {q.text}
-                    </div>
-                    <div className="text-xs mt-1">
-                      你的答案: <strong>{isUnanswered ? '未作答' : userAnswer}</strong>
-                      {!isUnanswered && (
-                        <span className="ml-2">
-                          正确答案: <strong className="text-green-600">{q.answer}</strong>
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <div className="ml-2">
-                    {isUnanswered ? (
-                      <span className="text-gray-500 text-xs">⚠️ 未答</span>
-                    ) : isCorrect ? (
-                      <span className="text-green-600">✓</span>
-                    ) : (
-                      <span className="text-red-600">✗</span>
-                    )}
-                  </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6" style={{ height: 'calc(100vh - 140px)' }}>
+          {/* 左侧：文章 */}
+          <div className="bg-white rounded-lg shadow flex flex-col overflow-hidden">
+            <div className="sticky top-0 bg-white border-b px-6 py-3 z-10">
+              <h2 className="text-xl font-bold text-blue-600">📖 原文</h2>
+            </div>
+            <div className="flex-1 overflow-y-auto p-6">
+              {Object.entries(articleData.paragraphs).map(([para, content]) => (
+                <div key={para} className="mb-4">
+                  <h3 className="font-bold text-blue-600 mb-1">段落 {para}</h3>
+                  <p className="text-gray-700 leading-relaxed text-sm">{content}</p>
                 </div>
-              </div>
+              ))}
+            </div>
+          </div>
 
-              {/* 展开的解析 */}
-              {isExpanded && (
-                <div className="p-3 bg-gray-50 border-t">
-                  {!isUnanswered && !isCorrect && q.locationSentence && (
-                    <>
-                      <div className="mb-2">
-                        <div className="font-semibold text-gray-700 text-xs mb-1">📍 定位段落: {q.locationParagraph}</div>
-                        <div className="bg-white p-2 rounded border text-gray-700 text-xs">
-                          {q.locationSentence}
+          {/* 右侧：题目与解析 */}
+          <div className="bg-white rounded-lg shadow flex flex-col overflow-hidden">
+            <div className="sticky top-0 bg-white border-b px-6 py-3 z-10">
+              <h2 className="text-xl font-bold text-blue-600">📝 题目与解析</h2>
+            </div>
+            <div className="flex-1 overflow-y-auto p-6">
+              <div className="space-y-4">
+                {questionIds.map((qId, idx) => {
+                  const { q, userAnswer, isCorrect, isUnanswered } = getQuestionData(qId);
+                  if (!q) return null;
+                  const isExpanded = expandedId === Number(qId);
+
+                  return (
+                    <div key={qId} className="border rounded-lg overflow-hidden">
+                      <div
+                        className={`p-3 cursor-pointer ${
+                          isUnanswered ? 'bg-gray-100' : isCorrect ? 'bg-green-50' : 'bg-red-50'
+                        }`}
+                        onClick={() => setExpandedId(isExpanded ? null : Number(qId))}
+                      >
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1">
+                            <div className="font-medium text-sm">
+                              {idx + 1}. {q.text}
+                            </div>
+                            <div className="text-xs mt-1">
+                              你的答案: <strong>{isUnanswered ? '未作答' : userAnswer}</strong>
+                              {!isUnanswered && (
+                                <span className="ml-2">
+                                  正确答案: <strong className="text-green-600">{q.answer}</strong>
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <div className="ml-2">
+                            {isUnanswered ? (
+                              <span className="text-gray-500 text-xs">⚠️ 未答</span>
+                            ) : isCorrect ? (
+                              <span className="text-green-600">✓</span>
+                            ) : (
+                              <span className="text-red-600">✗</span>
+                            )}
+                          </div>
                         </div>
                       </div>
-                      {q.translation && (
-                        <div className="mb-2">
-                          <div className="font-semibold text-gray-700 text-xs mb-1">📖 翻译</div>
-                          <div className="text-gray-600 text-xs">{q.translation}</div>
+
+                      {isExpanded && !isUnanswered && !isCorrect && (
+                        <div className="p-4 bg-gray-50 border-t space-y-3">
+                          {/* 定位证据 */}
+                          <div>
+                            <div className="font-semibold text-gray-700 text-sm mb-2">📍 定位证据</div>
+                            <div className="space-y-1 text-sm pl-2">
+                              <div>├── 段落: {q.locationParagraph}</div>
+                              <div>├── 定位句: "{q.locationSentence}"</div>
+                              {q.translation && <div>└── 翻译: {q.translation}</div>}
+                            </div>
+                          </div>
+
+                          {/* 知识拓展 */}
+                          {q.synonymPairs && q.synonymPairs.length > 0 && (
+                            <div>
+                              <div className="font-semibold text-gray-700 text-sm mb-2">📚 知识拓展</div>
+                              <div className="space-y-1 text-sm pl-2">
+                                <div>└── 同义替换:</div>
+                                <div className="pl-4 space-y-0.5">
+                                  {q.synonymPairs.map((pair: any, idx2: number) => (
+                                    <div key={idx2} className="text-gray-600">
+                                      {pair.from} → {pair.to}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* 错因分析 */}
+                          <div>
+                            <div className="font-semibold text-gray-700 text-sm mb-2">💡 错因分析</div>
+                            <div className="space-y-1 text-sm pl-2">
+                              <div>├── 类型: {errorTypeMap[q.errorType] || '未分类'} ({q.errorType})</div>
+                              <div>└── 原因: {q.errorAnalysis}</div>
+                            </div>
+                          </div>
+
+                          {/* 解题思路 */}
+                          {q.solution && (
+                            <div>
+                              <div className="font-semibold text-gray-700 text-sm mb-2">🎯 解题思路</div>
+                              <div className="pl-2">
+                                {renderSolution(q.solution)}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       )}
-                      {q.errorAnalysis && (
-                        <div className="mb-2">
-                          <div className="font-semibold text-gray-700 text-xs mb-1">💡 错因分析</div>
-                          <div className="text-gray-600 text-xs bg-yellow-50 p-2 rounded">
-                            {q.errorAnalysis}
+
+                      {isExpanded && isUnanswered && (
+                        <div className="p-3 bg-gray-50 border-t">
+                          <div className="text-gray-500 text-sm p-2 bg-gray-100 rounded">
+                            本题未作答。正确答案是 <strong>{q.answer}</strong>
+                            {q.solution && (
+                              <div className="mt-2 pt-2 border-t border-gray-200">
+                                <div className="font-semibold text-gray-700 mb-1">🎯 解题思路</div>
+                                {renderSolution(q.solution)}
+                              </div>
+                            )}
                           </div>
                         </div>
                       )}
-                    </>
-                  )}
-                  {isUnanswered && (
-                    <div className="text-gray-500 text-xs p-2 bg-gray-100 rounded">
-                      本题未作答。正确答案是 <strong>{q.answer}</strong>
-                    </div>
-                  )}
-                  {!isUnanswered && isCorrect && (
-                    <div className="text-green-600 text-xs p-2 bg-green-50 rounded">
-                      ✓ 回答正确
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  </div>
-</div> 
-            
 
-        {/* 继续按钮 */}
-        <div className="mt-8 text-center">
-          <button
-            onClick={() => router.push('/')}
-            className="bg-blue-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-blue-700"
-          >
-            继续练习
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
+                      {isExpanded && !isUnanswered && isCorrect && (
+                        <div className="p-3 bg-gray-50 border-t">
+                          <div className="text-green-600 text-sm p-2 bg-green-50 rounded">
+                            ✓ 回答正确
+                            {q.solution && (
+                              <div className="mt-2 pt-2 border-t border-green-200">
+                                <div className="font-semibold text-gray-700 mb-1">🎯 参考解析</div>
+                                {renderSolution(q.solution)}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
