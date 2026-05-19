@@ -103,6 +103,11 @@ export default function ResultPage() {
     ));
   };
 
+  // 判断是否为同义替换相关错因（已上线微训练）
+  const isSynonymError = (errorType: string) => {
+    return errorType === 'SYN-01' || errorType === 'SYN-02';
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* 顶部栏 */}
@@ -234,6 +239,22 @@ export default function ResultPage() {
                               </div>
                             </div>
                           )}
+
+                          {/* 复仇训练按钮 */}
+                          <div className="mt-3">
+                            {isSynonymError(q.errorType) ? (
+                              <button
+                                onClick={() => router.push(`/micro-training?skill=paraphrase`)}
+                                className="w-full bg-red-500 hover:bg-red-600 text-white py-2 rounded-lg text-sm font-semibold transition"
+                              >
+                                ⚡ 复仇训练
+                              </button>
+                            ) : (
+                              <div className="w-full bg-gray-300 text-gray-600 py-2 rounded-lg text-sm font-semibold text-center cursor-not-allowed">
+                                ⚡ 复仇训练（即将上线）
+                              </div>
+                            )}
+                          </div>
                         </div>
                       )}
 
